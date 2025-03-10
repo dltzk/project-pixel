@@ -3,6 +3,7 @@ package main
 import (
 	"image"
 	"os"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
@@ -12,16 +13,18 @@ import (
 func main() {
 
 	app := app.New()
-		
+
 	img := canvas.NewImageFromImage(nil)
 	img.FillMode = canvas.ImageFillContain
 	img.ScaleMode = canvas.ImageScaleFastest
+
+	origImg := canvas.NewImageFromImage(nil)
 
 	imgContainer := container.NewStack(img)
 
 	DragAndDropwindow := app.NewWindow("Photoshop")
 	DragAndDropwindow.SetOnDropped(func(pos fyne.Position, uris []fyne.URI) {
-		
+
 		if len(uris) > 0 {
 			file, err := os.Open(uris[0].Path())
 			if err != nil {
@@ -34,24 +37,41 @@ func main() {
 				return
 			}
 			img.Image = imgSrc
+			origImg.Image = imgSrc
 			img.Refresh()
 		}
 	})
 
+	origImgButton := originalButton(img, origImg)
 	grayScaleButton := GrayscaleButton(img)
 	negativeButton := NegativeButton(img, DragAndDropwindow)
 	adjustBrightnessButton := AdjustBrightnessButton(img, DragAndDropwindow)
 	binarizedButton := BinarizationButton(img, DragAndDropwindow)
+	increaseContrastButton := increaseContrastButton(img, DragAndDropwindow)
+	decreaseContrastButton := decreaseContrastButton(img, DragAndDropwindow)
+	createHistogramButton := createHistogramButton(img, DragAndDropwindow)
+	gammaButton := gammaButton(img, DragAndDropwindow)
+	quantizationButton := quantizationButton(img, DragAndDropwindow)
+	solarizationButton := solarizationButton(img, DragAndDropwindow)
+	lowFreqFilterButton := lowFreqFilterButton(img, DragAndDropwindow)
 
 	leftButtons := container.NewVBox(
-		grayScaleButton, 
-		negativeButton, 
+		origImgButton,
+		grayScaleButton,
+		negativeButton,
 		adjustBrightnessButton,
 		binarizedButton,
+		increaseContrastButton,
+		decreaseContrastButton,
+		createHistogramButton,
+		gammaButton,
+		quantizationButton,
+		solarizationButton,
+		lowFreqFilterButton,
 	)
 
 	content := container.NewHSplit(
-		leftButtons, 
+		leftButtons,
 		imgContainer,
 	)
 
