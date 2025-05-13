@@ -42,20 +42,30 @@ func main() {
 		}
 	})
 
-	origImgButton := originalButton(img, origImg)
-	grayScaleButton := GrayscaleButton(img)
-	negativeButton := NegativeButton(img, DragAndDropwindow)
-	adjustBrightnessButton := AdjustBrightnessButton(img, DragAndDropwindow)
-	binarizedButton := BinarizationButton(img, DragAndDropwindow)
-	increaseContrastButton := increaseContrastButton(img, DragAndDropwindow)
-	decreaseContrastButton := decreaseContrastButton(img, DragAndDropwindow)
-	createHistogramButton := createHistogramButton(img, DragAndDropwindow)
-	gammaButton := gammaButton(img, DragAndDropwindow)
-	quantizationButton := quantizationButton(img, DragAndDropwindow)
-	solarizationButton := solarizationButton(img, DragAndDropwindow)
-	lowFreqFilterButton := lowFreqFilterButton(img, DragAndDropwindow)
+	origImgButton := NewOriginalButton(img, origImg)
+	grayScaleButton := NewGrayscaleButton(img)
+	negativeButton := NewNegativeButton(img, DragAndDropwindow)
+	adjustBrightnessButton := NewAdjustBrightnessButton(img, DragAndDropwindow)
+	binarizedButton := NewBinarizationButton(img, DragAndDropwindow)
+	increaseContrastButton := NewIncreaseContrastButton(img, DragAndDropwindow)
+	decreaseContrastButton := NewDecreaseContrastButton(img, DragAndDropwindow)
+	createHistogramButton := NewCreateHistogramButton(img, DragAndDropwindow)
+	gammaButton := NewGammaButton(img, DragAndDropwindow)
+	quantizationButton := NewQuantizationButton(img, DragAndDropwindow)
+	solarizationButton := NewSolarizationButton(img, DragAndDropwindow)
+	lowFreqFilterButton := NewLowFreqFilterButton(img, DragAndDropwindow)
+	highFreqFilterButton := NewHighFreqFilterButton(img, DragAndDropwindow)
+	medianFilterButton := NewMedianFilterButton(img, DragAndDropwindow)
+	gassBlurButton := NewGaussBlurButton(img, DragAndDropwindow)
+	edgeEmpowerButton := NewEdgeEmpowerButton(img, DragAndDropwindow)
+	shiftEdgeButton := NewShiftEdgeButton(img, DragAndDropwindow)
+	embossingButton := NewEmbossingButton(img, DragAndDropwindow)
+	kirschButton := NewKirschButton(img, DragAndDropwindow)
+	pravitButton := NewPravitButton(img, DragAndDropwindow)
+	sobelButton := NewSobelButton(img, DragAndDropwindow)
+	robertsButton := NewRobertsButton(img, DragAndDropwindow)
 
-	leftButtons := container.NewVBox(
+	boxWithButtons := container.NewVBox(
 		origImgButton,
 		grayScaleButton,
 		negativeButton,
@@ -68,10 +78,22 @@ func main() {
 		quantizationButton,
 		solarizationButton,
 		lowFreqFilterButton,
+		highFreqFilterButton,
+		medianFilterButton,
+		gassBlurButton,
+		edgeEmpowerButton,
+		shiftEdgeButton,
+		embossingButton,
+		kirschButton,
+		pravitButton,
+		sobelButton,
+		robertsButton,
 	)
 
+	scrollButtons := container.NewVScroll(boxWithButtons)
+
 	content := container.NewHSplit(
-		leftButtons,
+		scrollButtons,
 		imgContainer,
 	)
 

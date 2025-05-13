@@ -4,8 +4,8 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"sort"
 	"strconv"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
@@ -14,15 +14,91 @@ import (
 )
 
 func checkForLimit(value float64) float64 {
-	if value > 255 {
-		return 255
-	} else if value < 0 {
-		return 0
+	if value > 255. {
+		return 255.
+	} else if value < 0. {
+		return 0.
 	}
 	return value
 }
 
-func originalButton(img *canvas.Image, origImg *canvas.Image) fyne.CanvasObject {
+func pascalRow(n int) []float64 {
+	res := make([]float64, n)
+	elem := 1.
+	res[0] = 1.
+	res[n-1] = 1.
+	end := float64(n)/2. + 1
+
+	for k := 1.; k < end; k++ {
+		elem *= (float64(n-1) + 1 - k) / k
+
+		pos := int(k)
+
+		res[pos] = elem
+		res[n-pos-1] = elem
+	}
+
+	return res
+}
+
+func GaussKernelByPascalRow(row []float64) [][]float64 {
+	res := make([][]float64, 0, len(row))
+
+	sum := 0.
+
+	end := len(row)/2 + 1
+
+	for range row {
+		res = append(res, make([]float64, len(row)))
+	}
+
+	n := len(row) - 1
+
+	setVal := func(i, j int, val float64) {
+		res[i][j] = val
+		res[n-i][j] = val
+		res[i][n-j] = val
+		res[n-i][n-j] = val
+	}
+
+	for i := range end {
+		for j := range end {
+			val := float64(row[i] * row[j])
+
+			setVal(i, j, val)
+
+			sum += val
+
+			var t1, t2 bool
+
+			if i != n-i {
+				t1 = true
+				sum += val
+			}
+
+			if j != n-j {
+				t2 = true
+				sum += val
+			}
+
+			if t1 && t2 {
+				sum += val
+			}
+		}
+	}
+
+	for i := range end {
+		for j := range end {
+			val := res[i][j] / sum
+
+			setVal(i, j, val)
+		}
+	}
+
+	return res
+}
+
+func NewOriginalButton(img *canvas.Image, origImg *canvas.Image) fyne.CanvasObject {
 	button := widget.NewButton("Original", func() {
 		if img.Image == nil || origImg == nil {
 			return
@@ -34,7 +110,7 @@ func originalButton(img *canvas.Image, origImg *canvas.Image) fyne.CanvasObject 
 	return button
 }
 
-func GrayscaleButton(img *canvas.Image) fyne.CanvasObject {
+func NewGrayscaleButton(img *canvas.Image) fyne.CanvasObject {
 
 	button := widget.NewButton("GrayScale", func() {
 
@@ -68,7 +144,7 @@ func GrayscaleButton(img *canvas.Image) fyne.CanvasObject {
 	return button
 }
 
-func NegativeButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+func NewNegativeButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
 	button := widget.NewButton("Negative", func() {
 		if img.Image == nil {
 			return
@@ -152,7 +228,7 @@ func NegativeButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
 	return button
 }
 
-func AdjustBrightnessButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+func NewAdjustBrightnessButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
 	button := widget.NewButton("Brightness", func() {
 		if img.Image == nil {
 			return
@@ -239,7 +315,7 @@ func AdjustBrightnessButton(img *canvas.Image, window fyne.Window) fyne.CanvasOb
 	return button
 }
 
-func BinarizationButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+func NewBinarizationButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
 	button := widget.NewButton("Binarization", func() {
 		if img.Image == nil {
 			return
@@ -318,7 +394,7 @@ func BinarizationButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject
 	return button
 }
 
-func increaseContrastButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+func NewIncreaseContrastButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
 	button := widget.NewButton("Contrast+", func() {
 		if img.Image == nil {
 			return
@@ -409,7 +485,7 @@ func increaseContrastButton(img *canvas.Image, window fyne.Window) fyne.CanvasOb
 	return button
 }
 
-func decreaseContrastButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+func NewDecreaseContrastButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
 	button := widget.NewButton("Contrast-", func() {
 		if img.Image == nil {
 			return
@@ -501,7 +577,7 @@ func decreaseContrastButton(img *canvas.Image, window fyne.Window) fyne.CanvasOb
 	return button
 }
 
-func createHistogramButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+func NewCreateHistogramButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
 	button := widget.NewButton("Histogram", func() {
 		if img.Image == nil {
 			return
@@ -595,7 +671,7 @@ func createHistogramButton(img *canvas.Image, window fyne.Window) fyne.CanvasObj
 	return button
 }
 
-func gammaButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+func NewGammaButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
 	button := widget.NewButton("Gamma conversion", func() {
 		if img.Image == nil {
 			return
@@ -701,7 +777,7 @@ func gammaButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
 	return button
 }
 
-func quantizationButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+func NewQuantizationButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
 	button := widget.NewButton("Quantization", func() {
 		if img.Image == nil {
 			return
@@ -726,7 +802,7 @@ func quantizationButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject
 			widget.NewLabel(""),
 		)
 
-		customDialog := dialog.NewCustomWithoutButtons("Qunatization", content, window)
+		customDialog := dialog.NewCustomWithoutButtons("Quantization", content, window)
 
 		confirmButton := widget.NewButton("OK", func() {
 
@@ -795,7 +871,7 @@ func quantizationButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject
 	return button
 }
 
-func solarizationButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+func NewSolarizationButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
 	button := widget.NewButton("Solarization", func() {
 		if img.Image == nil {
 			return
@@ -873,279 +949,137 @@ func solarizationButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject
 	return button
 }
 
-func lowFreqFilterButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+func NewLowFreqFilterButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+
 	button := widget.NewButton("Low Freq Filter", func() {
 		if img.Image == nil {
 			return
 		}
 
-		bounds := img.Image.Bounds()
-		gammamizedImg := image.NewRGBA(bounds)
-
 		H1Button := widget.NewButton("H1", func() {
+			bounds := img.Image.Bounds()
+			highFreqImg := image.NewRGBA(bounds)
 
-			for y := 2; y < bounds.Max.Y-2; y++ {
-				for x := 2; x < bounds.Max.X-2; x++ {
-					_, _, _, newA := img.Image.At(x, y).RGBA()
-					newA = newA >> 8
+			for y := 1; y < bounds.Max.Y-1; y++ {
+				for x := 1; x < bounds.Max.X-1; x++ {
+					var sumR, sumG, sumB uint32
 
-					firstPixelR, _, _, _ := img.Image.At(x, y).RGBA()
-					firstPixelR = firstPixelR >> 8
-					secondPixelR, _, _, _ := img.Image.At(x+1, y).RGBA()
-					secondPixelR = secondPixelR >> 8
-					thirdPixelR, _, _, _ := img.Image.At(x-1, y).RGBA()
-					thirdPixelR = thirdPixelR >> 8
+					for ky := -1; ky <= 1; ky++ {
+						for kx := -1; kx <= 1; kx++ {
 
-					fourthPixelR, _, _, _ := img.Image.At(x, y+1).RGBA()
-					fourthPixelR = fourthPixelR >> 8
-					fifthPixelR, _, _, _ := img.Image.At(x+1, y+1).RGBA()
-					fifthPixelR = fifthPixelR >> 8
-					sixthPixelR, _, _, _ := img.Image.At(x-1, y+1).RGBA()
-					sixthPixelR = sixthPixelR >> 8
+							px := x + kx
+							py := y + ky
 
-					seventhPixelR, _, _, _ := img.Image.At(x, y-1).RGBA()
-					seventhPixelR = seventhPixelR >> 8
-					eighthPixelR, _, _, _ := img.Image.At(x+1, y-1).RGBA()
-					eighthPixelR = eighthPixelR >> 8
-					ninthPixelR, _, _, _ := img.Image.At(x-1, y-1).RGBA()
-					ninthPixelR = ninthPixelR >> 8
+							r, g, b, _ := img.Image.At(px, py).RGBA()
 
-					valueR := firstPixelR + secondPixelR + thirdPixelR + fourthPixelR + fifthPixelR + sixthPixelR + seventhPixelR + eighthPixelR + ninthPixelR
+							sumR += (r >> 8)
+							sumG += (g >> 8)
+							sumB += (b >> 8)
+						}
+					}
 
-					_, firstPixelG, _, _ := img.Image.At(x, y).RGBA()
-					firstPixelG = firstPixelG >> 8
-					_, secondPixelG, _, _ := img.Image.At(x+1, y).RGBA()
-					secondPixelG = secondPixelG >> 8
-					_, thirdPixelG, _, _ := img.Image.At(x-1, y).RGBA()
-					thirdPixelG = thirdPixelG >> 8
-
-					_, fourthPixelG, _, _ := img.Image.At(x, y+1).RGBA()
-					fourthPixelG = fourthPixelG >> 8
-					_, fifthPixelG, _, _ := img.Image.At(x+1, y+1).RGBA()
-					fifthPixelG = fifthPixelG >> 8
-					_, sixthPixelG, _, _ := img.Image.At(x-1, y+1).RGBA()
-					sixthPixelG = sixthPixelG >> 8
-
-					_, seventhPixelG, _, _ := img.Image.At(x, y-1).RGBA()
-					seventhPixelG = seventhPixelG >> 8
-					_, eighthPixelG, _, _ := img.Image.At(x+1, y-1).RGBA()
-					eighthPixelG = eighthPixelG >> 8
-					_, ninthPixelG, _, _ := img.Image.At(x-1, y-1).RGBA()
-					ninthPixelG = ninthPixelG >> 8
-
-					valueG := firstPixelG + secondPixelG + thirdPixelG + fourthPixelG + fifthPixelG + sixthPixelG + seventhPixelG + eighthPixelG + ninthPixelG
-
-					_, _, firstPixelB, _ := img.Image.At(x, y).RGBA()
-					firstPixelB = firstPixelB >> 8
-					_, _, secondPixelB, _ := img.Image.At(x+1, y).RGBA()
-					secondPixelB = secondPixelB >> 8
-					_, _, thirdPixelB, _ := img.Image.At(x-1, y).RGBA()
-					thirdPixelB = thirdPixelB >> 8
-
-					_, _, fourthPixelB, _ := img.Image.At(x, y+1).RGBA()
-					fourthPixelB = fourthPixelB >> 8
-					_, _, fifthPixelB, _ := img.Image.At(x+1, y+1).RGBA()
-					fifthPixelB = fifthPixelB >> 8
-					_, _, sixthPixelB, _ := img.Image.At(x-1, y+1).RGBA()
-					sixthPixelB = sixthPixelB >> 8
-
-					_, _, seventhPixelB, _ := img.Image.At(x, y-1).RGBA()
-					seventhPixelB = seventhPixelB >> 8
-					_, _, eighthPixelB, _ := img.Image.At(x+1, y-1).RGBA()
-					eighthPixelB = eighthPixelB >> 8
-					_, _, ninthPixelB, _ := img.Image.At(x-1, y-1).RGBA()
-					ninthPixelB = ninthPixelB >> 8
-
-					valueB := firstPixelB + secondPixelB + thirdPixelB + fourthPixelB + fifthPixelB + sixthPixelB + seventhPixelB + eighthPixelB + ninthPixelB
-
-					gammamizedImg.Set(x, y, color.RGBA{uint8(valueR / 9), uint8(valueG / 9), uint8(valueB / 9), uint8(newA)})
+					highFreqImg.Set(x, y, color.RGBA{
+						R: uint8(sumR / 9),
+						G: uint8(sumG / 9),
+						B: uint8(sumB / 9),
+						A: 255,
+					})
 				}
 			}
-			img.Image = gammamizedImg
+
+			img.Image = highFreqImg
 			img.Refresh()
 		})
 
 		H2Button := widget.NewButton("H2", func() {
+			if img.Image == nil {
+				return
+			}
 
-			for y := 2; y < bounds.Max.Y-2; y++ {
-				for x := 2; x < bounds.Max.X-2; x++ {
-					_, _, _, newA := img.Image.At(x, y).RGBA()
-					newA = newA >> 8
+			bounds := img.Image.Bounds()
+			highFreqImg := image.NewRGBA(bounds)
 
-					firstPixelR, _, _, _ := img.Image.At(x, y).RGBA()
-					firstPixelR = firstPixelR >> 8
-					firstPixelR = firstPixelR * 2
-					secondPixelR, _, _, _ := img.Image.At(x+1, y).RGBA()
-					secondPixelR = secondPixelR >> 8
-					thirdPixelR, _, _, _ := img.Image.At(x-1, y).RGBA()
-					thirdPixelR = thirdPixelR >> 8
+			kernel := [3][3]uint32{
+				{1, 1, 1},
+				{1, 2, 1},
+				{1, 1, 1},
+			}
 
-					fourthPixelR, _, _, _ := img.Image.At(x, y+1).RGBA()
-					fourthPixelR = fourthPixelR >> 8
-					fifthPixelR, _, _, _ := img.Image.At(x+1, y+1).RGBA()
-					fifthPixelR = fifthPixelR >> 8
-					sixthPixelR, _, _, _ := img.Image.At(x-1, y+1).RGBA()
-					sixthPixelR = sixthPixelR >> 8
+			for y := 1; y < bounds.Max.Y-1; y++ {
+				for x := 1; x < bounds.Max.X-1; x++ {
+					var sumR, sumG, sumB uint32
 
-					seventhPixelR, _, _, _ := img.Image.At(x, y-1).RGBA()
-					seventhPixelR = seventhPixelR >> 8
-					eighthPixelR, _, _, _ := img.Image.At(x+1, y-1).RGBA()
-					eighthPixelR = eighthPixelR >> 8
-					ninthPixelR, _, _, _ := img.Image.At(x-1, y-1).RGBA()
-					ninthPixelR = ninthPixelR >> 8
+					for ky := -1; ky <= 1; ky++ {
+						for kx := -1; kx <= 1; kx++ {
 
-					valueR := firstPixelR + secondPixelR + thirdPixelR + fourthPixelR + fifthPixelR + sixthPixelR + seventhPixelR + eighthPixelR + ninthPixelR
+							px := x + kx
+							py := y + ky
 
-					_, firstPixelG, _, _ := img.Image.At(x, y).RGBA()
-					firstPixelG = firstPixelG >> 8
-					firstPixelG = firstPixelG * 2
-					_, secondPixelG, _, _ := img.Image.At(x+1, y).RGBA()
-					secondPixelG = secondPixelG >> 8
-					_, thirdPixelG, _, _ := img.Image.At(x-1, y).RGBA()
-					thirdPixelG = thirdPixelG >> 8
+							r, g, b, _ := img.Image.At(px, py).RGBA()
+							factor := kernel[ky+1][kx+1]
 
-					_, fourthPixelG, _, _ := img.Image.At(x, y+1).RGBA()
-					fourthPixelG = fourthPixelG >> 8
-					_, fifthPixelG, _, _ := img.Image.At(x+1, y+1).RGBA()
-					fifthPixelG = fifthPixelG >> 8
-					_, sixthPixelG, _, _ := img.Image.At(x-1, y+1).RGBA()
-					sixthPixelG = sixthPixelG >> 8
+							sumR += (r >> 8) * factor
+							sumG += (g >> 8) * factor
+							sumB += (b >> 8) * factor
+						}
+					}
 
-					_, seventhPixelG, _, _ := img.Image.At(x, y-1).RGBA()
-					seventhPixelG = seventhPixelG >> 8
-					_, eighthPixelG, _, _ := img.Image.At(x+1, y-1).RGBA()
-					eighthPixelG = eighthPixelG >> 8
-					_, ninthPixelG, _, _ := img.Image.At(x-1, y-1).RGBA()
-					ninthPixelG = ninthPixelG >> 8
-
-					valueG := firstPixelG + secondPixelG + thirdPixelG + fourthPixelG + fifthPixelG + sixthPixelG + seventhPixelG + eighthPixelG + ninthPixelG
-
-					_, _, firstPixelB, _ := img.Image.At(x, y).RGBA()
-					firstPixelB = firstPixelB >> 8
-					firstPixelB = firstPixelB * 2
-					_, _, secondPixelB, _ := img.Image.At(x+1, y).RGBA()
-					secondPixelB = secondPixelB >> 8
-					_, _, thirdPixelB, _ := img.Image.At(x-1, y).RGBA()
-					thirdPixelB = thirdPixelB >> 8
-
-					_, _, fourthPixelB, _ := img.Image.At(x, y+1).RGBA()
-					fourthPixelB = fourthPixelB >> 8
-					_, _, fifthPixelB, _ := img.Image.At(x+1, y+1).RGBA()
-					fifthPixelB = fifthPixelB >> 8
-					_, _, sixthPixelB, _ := img.Image.At(x-1, y+1).RGBA()
-					sixthPixelB = sixthPixelB >> 8
-
-					_, _, seventhPixelB, _ := img.Image.At(x, y-1).RGBA()
-					seventhPixelB = seventhPixelB >> 8
-					_, _, eighthPixelB, _ := img.Image.At(x+1, y-1).RGBA()
-					eighthPixelB = eighthPixelB >> 8
-					_, _, ninthPixelB, _ := img.Image.At(x-1, y-1).RGBA()
-					ninthPixelB = ninthPixelB >> 8
-
-					valueB := firstPixelB + secondPixelB + thirdPixelB + fourthPixelB + fifthPixelB + sixthPixelB + seventhPixelB + eighthPixelB + ninthPixelB
-
-					gammamizedImg.Set(x, y, color.RGBA{uint8(valueR / 10), uint8(valueG / 10), uint8(valueB / 10), uint8(newA)})
+					highFreqImg.Set(x, y, color.RGBA{
+						R: uint8(sumR / 10),
+						G: uint8(sumG / 10),
+						B: uint8(sumB / 10),
+						A: 255,
+					})
 				}
 			}
-			img.Image = gammamizedImg
+
+			img.Image = highFreqImg
 			img.Refresh()
 		})
 
 		H3Button := widget.NewButton("H3", func() {
+			if img.Image == nil {
+				return
+			}
 
-			for y := 2; y < bounds.Max.Y-2; y++ {
-				for x := 2; x < bounds.Max.X-2; x++ {
-					_, _, _, newA := img.Image.At(x, y).RGBA()
-					newA = newA >> 8
+			bounds := img.Image.Bounds()
+			highFreqImg := image.NewRGBA(bounds)
 
-					firstPixelR, _, _, _ := img.Image.At(x, y).RGBA()
-					firstPixelR = firstPixelR >> 8
-					firstPixelR = firstPixelR * 4
-					secondPixelR, _, _, _ := img.Image.At(x+1, y).RGBA()
-					secondPixelR = secondPixelR >> 8
-					secondPixelR = secondPixelR * 2
-					thirdPixelR, _, _, _ := img.Image.At(x-1, y).RGBA()
-					thirdPixelR = thirdPixelR >> 8
-					thirdPixelR = thirdPixelR * 2
+			kernel := [3][3]uint32{
+				{1, 2, 1},
+				{2, 4, 2},
+				{1, 2, 1},
+			}
 
-					fourthPixelR, _, _, _ := img.Image.At(x, y+1).RGBA()
-					fourthPixelR = fourthPixelR >> 8
-					fourthPixelR = fourthPixelR * 2
-					fifthPixelR, _, _, _ := img.Image.At(x+1, y+1).RGBA()
-					fifthPixelR = fifthPixelR >> 8
-					sixthPixelR, _, _, _ := img.Image.At(x-1, y+1).RGBA()
-					sixthPixelR = sixthPixelR >> 8
+			for y := 1; y < bounds.Max.Y-1; y++ {
+				for x := 1; x < bounds.Max.X-1; x++ {
+					var sumR, sumG, sumB uint32
 
-					seventhPixelR, _, _, _ := img.Image.At(x, y-1).RGBA()
-					seventhPixelR = seventhPixelR >> 8
-					seventhPixelR = seventhPixelR * 2
-					eighthPixelR, _, _, _ := img.Image.At(x+1, y-1).RGBA()
-					eighthPixelR = eighthPixelR >> 8
-					ninthPixelR, _, _, _ := img.Image.At(x-1, y-1).RGBA()
-					ninthPixelR = ninthPixelR >> 8
+					for ky := -1; ky <= 1; ky++ {
+						for kx := -1; kx <= 1; kx++ {
 
-					valueR := firstPixelR + secondPixelR + thirdPixelR + fourthPixelR + fifthPixelR + sixthPixelR + seventhPixelR + eighthPixelR + ninthPixelR
+							px := x + kx
+							py := y + ky
 
-					_, firstPixelG, _, _ := img.Image.At(x, y).RGBA()
-					firstPixelG = firstPixelG >> 8
-					firstPixelG = firstPixelG * 4
-					_, secondPixelG, _, _ := img.Image.At(x+1, y).RGBA()
-					secondPixelG = secondPixelG >> 8
-					secondPixelG = secondPixelG * 2
-					_, thirdPixelG, _, _ := img.Image.At(x-1, y).RGBA()
-					thirdPixelG = thirdPixelG >> 8
-					thirdPixelG = thirdPixelG * 2
+							r, g, b, _ := img.Image.At(px, py).RGBA()
+							factor := kernel[ky+1][kx+1]
 
-					_, fourthPixelG, _, _ := img.Image.At(x, y+1).RGBA()
-					fourthPixelG = fourthPixelG >> 8
-					fourthPixelG = fourthPixelG * 2
-					_, fifthPixelG, _, _ := img.Image.At(x+1, y+1).RGBA()
-					fifthPixelG = fifthPixelG >> 8
-					_, sixthPixelG, _, _ := img.Image.At(x-1, y+1).RGBA()
-					sixthPixelG = sixthPixelG >> 8
+							sumR += (r >> 8) * factor
+							sumG += (g >> 8) * factor
+							sumB += (b >> 8) * factor
+						}
+					}
 
-					_, seventhPixelG, _, _ := img.Image.At(x, y-1).RGBA()
-					seventhPixelG = seventhPixelG >> 8
-					seventhPixelG = seventhPixelG * 2
-					_, eighthPixelG, _, _ := img.Image.At(x+1, y-1).RGBA()
-					eighthPixelG = eighthPixelG >> 8
-					_, ninthPixelG, _, _ := img.Image.At(x-1, y-1).RGBA()
-					ninthPixelG = ninthPixelG >> 8
-
-					valueG := firstPixelG + secondPixelG + thirdPixelG + fourthPixelG + fifthPixelG + sixthPixelG + seventhPixelG + eighthPixelG + ninthPixelG
-
-					_, _, firstPixelB, _ := img.Image.At(x, y).RGBA()
-					firstPixelB = firstPixelB >> 8
-					firstPixelB = firstPixelB * 4
-					_, _, secondPixelB, _ := img.Image.At(x+1, y).RGBA()
-					secondPixelB = secondPixelB >> 8
-					secondPixelB = secondPixelB * 2
-					_, _, thirdPixelB, _ := img.Image.At(x-1, y).RGBA()
-					thirdPixelB = thirdPixelB >> 8
-					thirdPixelB = thirdPixelB * 2
-
-					_, _, fourthPixelB, _ := img.Image.At(x, y+1).RGBA()
-					fourthPixelB = fourthPixelB >> 8
-					fourthPixelB = fourthPixelB * 2
-					_, _, fifthPixelB, _ := img.Image.At(x+1, y+1).RGBA()
-					fifthPixelB = fifthPixelB >> 8
-					_, _, sixthPixelB, _ := img.Image.At(x-1, y+1).RGBA()
-					sixthPixelB = sixthPixelB >> 8
-
-					_, _, seventhPixelB, _ := img.Image.At(x, y-1).RGBA()
-					seventhPixelB = seventhPixelB >> 8
-					seventhPixelB = seventhPixelB * 2
-					_, _, eighthPixelB, _ := img.Image.At(x+1, y-1).RGBA()
-					eighthPixelB = eighthPixelB >> 8
-					_, _, ninthPixelB, _ := img.Image.At(x-1, y-1).RGBA()
-					ninthPixelB = ninthPixelB >> 8
-
-					valueB := firstPixelB + secondPixelB + thirdPixelB + fourthPixelB + fifthPixelB + sixthPixelB + seventhPixelB + eighthPixelB + ninthPixelB
-
-					gammamizedImg.Set(x, y, color.RGBA{uint8(valueR / 16), uint8(valueG / 16), uint8(valueB / 16), uint8(newA)})
+					highFreqImg.Set(x, y, color.RGBA{
+						R: uint8(sumR / 16),
+						G: uint8(sumG / 16),
+						B: uint8(sumB / 16),
+						A: 255,
+					})
 				}
 			}
-			img.Image = gammamizedImg
+
+			img.Image = highFreqImg
 			img.Refresh()
 		})
 
@@ -1156,7 +1090,7 @@ func lowFreqFilterButton(img *canvas.Image, window fyne.Window) fyne.CanvasObjec
 			widget.NewLabel(""),
 		)
 
-		customDialog := dialog.NewCustomWithoutButtons("Qunatization", content, window)
+		customDialog := dialog.NewCustomWithoutButtons("Low Freq", content, window)
 
 		dissmisButton := widget.NewButton("Cancel", func() {
 			customDialog.Hide()
@@ -1174,6 +1108,985 @@ func lowFreqFilterButton(img *canvas.Image, window fyne.Window) fyne.CanvasObjec
 
 		customDialog.Show()
 
+	})
+
+	return button
+}
+
+func NewHighFreqFilterButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+
+	button := widget.NewButton("High Freq Filter", func() {
+		if img.Image == nil {
+			return
+		}
+
+		H1Button := widget.NewButton("H1", func() {
+			bounds := img.Image.Bounds()
+			highFreqImg := image.NewRGBA(bounds)
+
+			kernel := [3][3]float64{
+				{-1, -1, -1},
+				{-1, 9, -1},
+				{-1, -1, -1},
+			}
+
+			for y := 1; y < bounds.Max.Y-1; y++ {
+				for x := 1; x < bounds.Max.X-1; x++ {
+					var sumR, sumG, sumB float64
+
+					for ky := -1; ky <= 1; ky++ {
+						for kx := -1; kx <= 1; kx++ {
+
+							px := x + kx
+							py := y + ky
+
+							r, g, b, _ := img.Image.At(px, py).RGBA()
+							factor := kernel[ky+1][kx+1]
+
+							sumR += float64(r>>8) * factor
+							sumG += float64(g>>8) * factor
+							sumB += float64(b>>8) * factor
+						}
+					}
+
+					fr := checkForLimit(sumR)
+					fg := checkForLimit(sumG)
+					fb := checkForLimit(sumB)
+
+					highFreqImg.Set(x, y, color.RGBA{
+						R: uint8(fr),
+						G: uint8(fg),
+						B: uint8(fb),
+						A: 255,
+					})
+				}
+			}
+
+			img.Image = highFreqImg
+			img.Refresh()
+		})
+
+		H2Button := widget.NewButton("H2", func() {
+			if img.Image == nil {
+				return
+			}
+
+			bounds := img.Image.Bounds()
+			highFreqImg := image.NewRGBA(bounds)
+
+			kernel := [3][3]float64{
+				{0, -1, 0},
+				{-1, 5, -1},
+				{0, -1, 0},
+			}
+
+			for y := 1; y < bounds.Max.Y-1; y++ {
+				for x := 1; x < bounds.Max.X-1; x++ {
+					var sumR, sumG, sumB float64
+
+					for ky := -1; ky <= 1; ky++ {
+						for kx := -1; kx <= 1; kx++ {
+
+							px := x + kx
+							py := y + ky
+
+							r, g, b, _ := img.Image.At(px, py).RGBA()
+							factor := kernel[ky+1][kx+1]
+
+							sumR += float64(r>>8) * factor
+							sumG += float64(g>>8) * factor
+							sumB += float64(b>>8) * factor
+						}
+					}
+
+					fr := checkForLimit(sumR)
+					fg := checkForLimit(sumG)
+					fb := checkForLimit(sumB)
+
+					highFreqImg.Set(x, y, color.RGBA{
+						R: uint8(fr),
+						G: uint8(fg),
+						B: uint8(fb),
+						A: 255,
+					})
+				}
+			}
+
+			img.Image = highFreqImg
+			img.Refresh()
+		})
+
+		H3Button := widget.NewButton("H3", func() {
+			if img.Image == nil {
+				return
+			}
+
+			bounds := img.Image.Bounds()
+			highFreqImg := image.NewRGBA(bounds)
+
+			kernel := [3][3]float64{
+				{1, -2, 1},
+				{-2, 5, -2},
+				{1, -2, 1},
+			}
+
+			for y := 1; y < bounds.Max.Y-1; y++ {
+				for x := 1; x < bounds.Max.X-1; x++ {
+					var sumR, sumG, sumB float64
+
+					for ky := -1; ky <= 1; ky++ {
+						for kx := -1; kx <= 1; kx++ {
+
+							px := x + kx
+							py := y + ky
+
+							r, g, b, _ := img.Image.At(px, py).RGBA()
+							factor := kernel[ky+1][kx+1]
+
+							sumR += float64(r>>8) * factor
+							sumG += float64(g>>8) * factor
+							sumB += float64(b>>8) * factor
+						}
+					}
+
+					fr := checkForLimit(sumR)
+					fg := checkForLimit(sumG)
+					fb := checkForLimit(sumB)
+
+					highFreqImg.Set(x, y, color.RGBA{
+						R: uint8(fr),
+						G: uint8(fg),
+						B: uint8(fb),
+						A: 255,
+					})
+				}
+			}
+
+			img.Image = highFreqImg
+			img.Refresh()
+		})
+
+		content := container.NewVBox(
+			H1Button,
+			H2Button,
+			H3Button,
+			widget.NewLabel(""),
+		)
+
+		customDialog := dialog.NewCustomWithoutButtons("High Freq", content, window)
+
+		dissmisButton := widget.NewButton("Cancel", func() {
+			customDialog.Hide()
+		})
+
+		fixedSizeButton := container.NewGridWrap(
+			fyne.NewSize(100, 35),
+			dissmisButton,
+		)
+
+		centeredButton := container.NewCenter(fixedSizeButton)
+		content.Add(centeredButton)
+
+		customDialog.Resize(fyne.NewSize(300, 100))
+
+		customDialog.Show()
+
+	})
+
+	return button
+}
+
+func NewMedianFilterButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+	button := widget.NewButton("Median filter", func() {
+		if img.Image == nil {
+			return
+		}
+
+		bounds := img.Image.Bounds()
+		changedImg := image.NewRGBA(bounds)
+
+		sizeOfWindow := widget.NewEntry()
+		sizeOfWindow.SetPlaceHolder("Size of window")
+
+		content := container.NewVBox(
+			sizeOfWindow,
+			widget.NewLabel(""),
+		)
+
+		customDialog := dialog.NewCustomWithoutButtons("Median filter", content, window)
+
+		confirmButton := widget.NewButton("OK", func() {
+
+			size := sizeOfWindow.Text
+			windowSize, err := strconv.Atoi(size)
+			if err != nil || windowSize%2 == 0 {
+				dialog.ShowInformation("Ошибка", "Введите корректное нечетное число", window)
+				return
+			}
+
+			customDialog.Hide()
+
+			window := windowSize / 2
+
+			for y := window; y < bounds.Max.Y-window; y++ {
+				for x := window; x < bounds.Max.X-window; x++ {
+
+					var r, g, b []int
+					for ky := -window; ky <= window; ky++ {
+						for kx := -window; kx <= window; kx++ {
+
+							pr, pg, pb, _ := img.Image.At(x+kx, y+ky).RGBA()
+							r = append(r, int(pr>>8))
+							g = append(g, int(pg>>8))
+							b = append(b, int(pb>>8))
+						}
+					}
+
+					sort.Ints(r)
+					sort.Ints(g)
+					sort.Ints(b)
+
+					medianPos := len(r) / 2
+
+					changedImg.Set(x, y, color.RGBA{
+						R: uint8(r[medianPos]),
+						G: uint8(g[medianPos]),
+						B: uint8(b[medianPos]),
+						A: 255,
+					})
+				}
+			}
+			img.Image = changedImg
+			img.Refresh()
+		})
+
+		dissmisButton := widget.NewButton("Cancel", func() {
+			customDialog.Hide()
+		})
+
+		fixedSizeButton := container.NewGridWrap(
+			fyne.NewSize(100, 35),
+			confirmButton,
+			dissmisButton,
+		)
+
+		centeredButton := container.NewCenter(fixedSizeButton)
+		content.Add(centeredButton)
+
+		customDialog.Resize(fyne.NewSize(300, 100))
+
+		customDialog.Show()
+
+	})
+
+	return button
+}
+
+func NewGaussBlurButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+	button := widget.NewButton("Gauss blur", func() {
+		if img.Image == nil {
+			return
+		}
+
+		bounds := img.Image.Bounds()
+		changedImg := image.NewRGBA(bounds)
+
+		sizeOfWindow := widget.NewEntry()
+		sizeOfWindow.SetPlaceHolder("Size of window")
+
+		content := container.NewVBox(
+			sizeOfWindow,
+			widget.NewLabel(""),
+		)
+
+		customDialog := dialog.NewCustomWithoutButtons("Gauss blur", content, window)
+
+		confirmButton := widget.NewButton("OK", func() {
+
+			size := sizeOfWindow.Text
+			windowSize, err := strconv.Atoi(size)
+			if err != nil || windowSize%2 == 0 {
+				dialog.ShowInformation("Ошибка", "Введите корректное нечетное число", window)
+				return
+			}
+
+			customDialog.Hide()
+
+			kernel := GaussKernelByPascalRow(pascalRow(windowSize))
+
+			var multiplier float64 = float64(windowSize) / 3.
+
+			for y := windowSize; y < bounds.Max.Y-windowSize; y++ {
+				for x := windowSize; x < bounds.Max.X-windowSize; x++ {
+					var sumR, sumG, sumB, sumWeight float64
+					for ky := -math.Round(multiplier); ky <= math.Round(multiplier); ky++ {
+						for kx := -math.Round(multiplier); kx <= math.Round(multiplier); kx++ {
+							weight := kernel[int(ky)+int(math.Round(multiplier))][int(kx)+int(math.Round(multiplier))]
+							r, g, b, _ := img.Image.At(x+int(kx), y+int(ky)).RGBA()
+							sumR += float64(r>>8) * weight
+							sumG += float64(g>>8) * weight
+							sumB += float64(b>>8) * weight
+							sumWeight += weight
+						}
+					}
+
+					changedImg.Set(x, y, color.RGBA{
+						R: uint8(sumR / sumWeight),
+						G: uint8(sumG / sumWeight),
+						B: uint8(sumB / sumWeight),
+						A: 255,
+					})
+				}
+			}
+			img.Image = changedImg
+			img.Refresh()
+		})
+
+		dissmisButton := widget.NewButton("Cancel", func() {
+			customDialog.Hide()
+		})
+
+		fixedSizeButton := container.NewGridWrap(
+			fyne.NewSize(100, 35),
+			confirmButton,
+			dissmisButton,
+		)
+
+		centeredButton := container.NewCenter(fixedSizeButton)
+		content.Add(centeredButton)
+
+		customDialog.Resize(fyne.NewSize(300, 100))
+
+		customDialog.Show()
+
+	})
+
+	return button
+}
+
+func NewEdgeEmpowerButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+
+	button := widget.NewButton("Edge empower", func() {
+
+		if img.Image == nil {
+			return
+		}
+
+		bounds := img.Image.Bounds()
+		highFreqImg := image.NewRGBA(bounds)
+
+		kernel := [3][3]float64{
+			{0, 1, 0},
+			{1, -4, 1},
+			{0, 1, 0},
+		}
+
+		for y := 1; y < bounds.Max.Y-1; y++ {
+			for x := 1; x < bounds.Max.X-1; x++ {
+				var sumR, sumG, sumB float64
+
+				for ky := -1; ky <= 1; ky++ {
+					for kx := -1; kx <= 1; kx++ {
+
+						px := x + kx
+						py := y + ky
+
+						r, g, b, _ := img.Image.At(px, py).RGBA()
+						factor := kernel[ky+1][kx+1]
+
+						grayScale := (0.3*float64(r>>8) + 0.59*float64(g>>8) + 0.11*float64(b>>8))
+
+						sumR += grayScale * factor
+						sumG += grayScale * factor
+						sumB += grayScale * factor
+					}
+				}
+
+				fr := math.Abs(sumR)
+				fg := math.Abs(sumG)
+				fb := math.Abs(sumB)
+
+				highFreqImg.Set(x, y, color.RGBA{
+					R: uint8(fr),
+					G: uint8(fg),
+					B: uint8(fb),
+					A: 255,
+				})
+			}
+		}
+
+		img.Image = highFreqImg
+		img.Refresh()
+	})
+
+	return button
+}
+
+func NewShiftEdgeButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+
+	button := widget.NewButton("Shift edge", func() {
+		if img.Image == nil {
+			return
+		}
+
+		H1Button := widget.NewButton("Vertical", func() {
+			bounds := img.Image.Bounds()
+			highFreqImg := image.NewRGBA(bounds)
+
+			kernel := [3][3]float64{
+				{0, 0, 0},
+				{-1, 1, 0},
+				{0, 0, 0},
+			}
+
+			for y := 1; y < bounds.Max.Y-1; y++ {
+				for x := 1; x < bounds.Max.X-1; x++ {
+					var sumR, sumG, sumB float64
+
+					for ky := -1; ky <= 1; ky++ {
+						for kx := -1; kx <= 1; kx++ {
+
+							px := x + kx
+							py := y + ky
+
+							r, g, b, _ := img.Image.At(px, py).RGBA()
+							factor := kernel[ky+1][kx+1]
+
+							grayScale := (0.3*float64(r>>8) + 0.59*float64(g>>8) + 0.11*float64(b>>8))
+
+							sumR += grayScale * factor
+							sumG += grayScale * factor
+							sumB += grayScale * factor
+						}
+					}
+
+					fr := checkForLimit(sumR)
+					fg := checkForLimit(sumG)
+					fb := checkForLimit(sumB)
+
+					highFreqImg.Set(x, y, color.RGBA{
+						R: uint8(fr),
+						G: uint8(fg),
+						B: uint8(fb),
+						A: 255,
+					})
+				}
+			}
+
+			img.Image = highFreqImg
+			img.Refresh()
+		})
+
+		H2Button := widget.NewButton("Horizontal", func() {
+			if img.Image == nil {
+				return
+			}
+
+			bounds := img.Image.Bounds()
+			highFreqImg := image.NewRGBA(bounds)
+
+			kernel := [3][3]float64{
+				{0, -1, 0},
+				{0, 1, 0},
+				{0, 0, 0},
+			}
+
+			for y := 1; y < bounds.Max.Y-1; y++ {
+				for x := 1; x < bounds.Max.X-1; x++ {
+					var sumR, sumG, sumB float64
+
+					for ky := -1; ky <= 1; ky++ {
+						for kx := -1; kx <= 1; kx++ {
+
+							px := x + kx
+							py := y + ky
+
+							r, g, b, _ := img.Image.At(px, py).RGBA()
+							factor := kernel[ky+1][kx+1]
+
+							grayScale := (0.3*float64(r>>8) + 0.59*float64(g>>8) + 0.11*float64(b>>8))
+
+							sumR += grayScale * factor
+							sumG += grayScale * factor
+							sumB += grayScale * factor
+						}
+					}
+
+					fr := checkForLimit(sumR)
+					fg := checkForLimit(sumG)
+					fb := checkForLimit(sumB)
+
+					highFreqImg.Set(x, y, color.RGBA{
+						R: uint8(fr),
+						G: uint8(fg),
+						B: uint8(fb),
+						A: 255,
+					})
+				}
+			}
+
+			img.Image = highFreqImg
+			img.Refresh()
+		})
+
+		H3Button := widget.NewButton("Diagonal", func() {
+			if img.Image == nil {
+				return
+			}
+
+			bounds := img.Image.Bounds()
+			highFreqImg := image.NewRGBA(bounds)
+
+			kernel := [3][3]float64{
+				{-1, 0, 0},
+				{0, 1, 0},
+				{0, 0, 0},
+			}
+
+			for y := 1; y < bounds.Max.Y-1; y++ {
+				for x := 1; x < bounds.Max.X-1; x++ {
+					var sumR, sumG, sumB float64
+
+					for ky := -1; ky <= 1; ky++ {
+						for kx := -1; kx <= 1; kx++ {
+
+							px := x + kx
+							py := y + ky
+
+							r, g, b, _ := img.Image.At(px, py).RGBA()
+							factor := kernel[ky+1][kx+1]
+
+							grayScale := (0.3*float64(r>>8) + 0.59*float64(g>>8) + 0.11*float64(b>>8))
+
+							sumR += grayScale * factor
+							sumG += grayScale * factor
+							sumB += grayScale * factor
+						}
+					}
+
+					fr := math.Abs(sumR)
+					fg := math.Abs(sumG)
+					fb := math.Abs(sumB)
+
+					highFreqImg.Set(x, y, color.RGBA{
+						R: uint8(fr),
+						G: uint8(fg),
+						B: uint8(fb),
+						A: 255,
+					})
+				}
+			}
+
+			img.Image = highFreqImg
+			img.Refresh()
+		})
+
+		content := container.NewVBox(
+			H1Button,
+			H2Button,
+			H3Button,
+			widget.NewLabel(""),
+		)
+
+		customDialog := dialog.NewCustomWithoutButtons("Shift edge", content, window)
+
+		dissmisButton := widget.NewButton("Cancel", func() {
+			customDialog.Hide()
+		})
+
+		fixedSizeButton := container.NewGridWrap(
+			fyne.NewSize(100, 35),
+			dissmisButton,
+		)
+
+		centeredButton := container.NewCenter(fixedSizeButton)
+		content.Add(centeredButton)
+
+		customDialog.Resize(fyne.NewSize(300, 100))
+
+		customDialog.Show()
+
+	})
+
+	return button
+}
+
+func NewEmbossingButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+
+	button := widget.NewButton("Embossing", func() {
+		if img.Image == nil {
+			return
+		}
+
+		H1Button := widget.NewButton("In", func() {
+			bounds := img.Image.Bounds()
+			highFreqImg := image.NewRGBA(bounds)
+
+			kernel := [3][3]float64{
+				{0, 1, 0},
+				{-1, 0, 1},
+				{0, -1, 0},
+			}
+
+			for y := 1; y < bounds.Max.Y-1; y++ {
+				for x := 1; x < bounds.Max.X-1; x++ {
+					var sumR, sumG, sumB float64
+
+					for ky := -1; ky <= 1; ky++ {
+						for kx := -1; kx <= 1; kx++ {
+
+							px := x + kx
+							py := y + ky
+
+							r, g, b, _ := img.Image.At(px, py).RGBA()
+							factor := kernel[ky+1][kx+1]
+
+							grayScale := (0.3*float64(r>>8) + 0.59*float64(g>>8) + 0.11*float64(b>>8))
+
+							sumR += grayScale * factor
+							sumG += grayScale * factor
+							sumB += grayScale * factor
+						}
+					}
+
+					fr := checkForLimit(sumR + 128)
+					fg := checkForLimit(sumG + 128)
+					fb := checkForLimit(sumB + 128)
+
+					highFreqImg.Set(x, y, color.RGBA{
+						R: uint8(fr),
+						G: uint8(fg),
+						B: uint8(fb),
+						A: 255,
+					})
+				}
+			}
+
+			img.Image = highFreqImg
+			img.Refresh()
+		})
+
+		H2Button := widget.NewButton("Out", func() {
+			if img.Image == nil {
+				return
+			}
+
+			bounds := img.Image.Bounds()
+			highFreqImg := image.NewRGBA(bounds)
+
+			kernel := [3][3]float64{
+				{0, -1, 0},
+				{1, 0, -1},
+				{0, 1, 0},
+			}
+
+			for y := 1; y < bounds.Max.Y-1; y++ {
+				for x := 1; x < bounds.Max.X-1; x++ {
+					var sumR, sumG, sumB float64
+
+					for ky := -1; ky <= 1; ky++ {
+						for kx := -1; kx <= 1; kx++ {
+
+							px := x + kx
+							py := y + ky
+
+							r, g, b, _ := img.Image.At(px, py).RGBA()
+							factor := kernel[ky+1][kx+1]
+
+							grayScale := (0.3*float64(r>>8) + 0.59*float64(g>>8) + 0.11*float64(b>>8))
+
+							sumR += grayScale * factor
+							sumG += grayScale * factor
+							sumB += grayScale * factor
+						}
+					}
+
+					fr := checkForLimit(sumR + 128)
+					fg := checkForLimit(sumG + 128)
+					fb := checkForLimit(sumB + 128)
+
+					highFreqImg.Set(x, y, color.RGBA{
+						R: uint8(fr),
+						G: uint8(fg),
+						B: uint8(fb),
+						A: 255,
+					})
+				}
+			}
+
+			img.Image = highFreqImg
+			img.Refresh()
+		})
+
+		content := container.NewVBox(
+			H1Button,
+			H2Button,
+			widget.NewLabel(""),
+		)
+
+		customDialog := dialog.NewCustomWithoutButtons("Shift edge", content, window)
+
+		dissmisButton := widget.NewButton("Cancel", func() {
+			customDialog.Hide()
+		})
+
+		fixedSizeButton := container.NewGridWrap(
+			fyne.NewSize(100, 35),
+			dissmisButton,
+		)
+
+		centeredButton := container.NewCenter(fixedSizeButton)
+		content.Add(centeredButton)
+
+		customDialog.Resize(fyne.NewSize(300, 100))
+
+		customDialog.Show()
+
+	})
+
+	return button
+}
+
+func NewKirschButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+
+	button := widget.NewButton("Kirsch", func() {
+
+		if img.Image == nil {
+			return
+		}
+
+		bounds := img.Image.Bounds()
+		highFreqImg := image.NewRGBA(bounds)
+
+		kernels := [8][3][3]float64{
+			{{5, 5, 5}, {-3, 0, -3}, {-3, -3, -3}}, // 0°
+			{{-3, 5, 5}, {-3, 0, 5}, {-3, -3, -3}}, // 45°
+			{{-3, -3, 5}, {-3, 0, 5}, {-3, -3, 5}}, // 90°
+			{{-3, -3, -3}, {-3, 0, 5}, {-3, 5, 5}}, // 135°
+			{{-3, -3, -3}, {-3, 0, -3}, {5, 5, 5}}, // 180°
+			{{-3, -3, -3}, {5, 0, -3}, {5, 5, -3}}, // 225°
+			{{5, -3, -3}, {5, 0, -3}, {5, -3, -3}}, // 270°
+			{{5, 5, -3}, {5, 0, -3}, {-3, -3, -3}}, // 315°
+		}
+
+		for y := 1; y < bounds.Max.Y-1; y++ {
+			for x := 1; x < bounds.Max.X-1; x++ {
+
+				maxGradient := 0.0
+
+				for _, kernel := range kernels {
+
+					var sumR, sumG, sumB float64
+
+					for ky := -1; ky <= 1; ky++ {
+						for kx := -1; kx <= 1; kx++ {
+
+							px := x + kx
+							py := y + ky
+
+							r, g, b, _ := img.Image.At(px, py).RGBA()
+							factor := kernel[ky+1][kx+1]
+
+							grayScale := (0.3*float64(r>>8) + 0.59*float64(g>>8) + 0.11*float64(b>>8))
+
+							sumR += grayScale * factor
+							sumG += grayScale * factor
+							sumB += grayScale * factor
+						}
+					}
+
+					gradient := math.Max(math.Abs(sumR), math.Max(math.Abs(sumG), math.Abs(sumB)))
+					if gradient > maxGradient {
+						maxGradient = gradient
+					}
+				}
+				value := checkForLimit(maxGradient)
+
+				highFreqImg.Set(x, y, color.RGBA{
+					R: uint8(value),
+					G: uint8(value),
+					B: uint8(value),
+					A: 255,
+				})
+			}
+		}
+
+		img.Image = highFreqImg
+		img.Refresh()
+	})
+
+	return button
+}
+
+func NewPravitButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+
+	button := widget.NewButton("Pravit", func() {
+
+		if img.Image == nil {
+			return
+		}
+
+		bounds := img.Image.Bounds()
+		highFreqImg := image.NewRGBA(bounds)
+
+		kernels := [2][3][3]float64{
+			{{1, 0, -1}, {1, 0, -1}, {1, 0, -1}},
+			{{-1, -1, -1}, {0, 0, 0}, {1, 1, 1}},
+		}
+
+		for y := 1; y < bounds.Max.Y-1; y++ {
+			for x := 1; x < bounds.Max.X-1; x++ {
+
+				maxGradient := 0.0
+
+				for _, kernel := range kernels {
+
+					var sumR, sumG, sumB float64
+
+					for ky := -1; ky <= 1; ky++ {
+						for kx := -1; kx <= 1; kx++ {
+
+							px := x + kx
+							py := y + ky
+
+							r, g, b, _ := img.Image.At(px, py).RGBA()
+							factor := kernel[ky+1][kx+1]
+
+							grayScale := (0.3*float64(r>>8) + 0.59*float64(g>>8) + 0.11*float64(b>>8))
+
+							sumR += grayScale * factor
+							sumG += grayScale * factor
+							sumB += grayScale * factor
+						}
+					}
+
+					gradient := math.Max(math.Abs(sumR), math.Max(math.Abs(sumG), math.Abs(sumB)))
+					if gradient > maxGradient {
+						maxGradient = gradient
+					}
+				}
+				value := checkForLimit(maxGradient)
+
+				highFreqImg.Set(x, y, color.RGBA{
+					R: uint8(value),
+					G: uint8(value),
+					B: uint8(value),
+					A: 255,
+				})
+			}
+		}
+
+		img.Image = highFreqImg
+		img.Refresh()
+	})
+
+	return button
+}
+
+func NewSobelButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+
+	button := widget.NewButton("Sobel", func() {
+
+		if img.Image == nil {
+			return
+		}
+
+		bounds := img.Image.Bounds()
+		highFreqImg := image.NewRGBA(bounds)
+
+		kernels := [2][3][3]float64{
+			{{-1, 0, 1}, {-2, 0, 2}, {-1, 0, 1}},
+			{{1, 2, 1}, {0, 0, 0}, {-1, -2, -1}},
+		}
+
+		for y := 1; y < bounds.Max.Y-1; y++ {
+			for x := 1; x < bounds.Max.X-1; x++ {
+
+				gradient := 0.0
+
+				for _, kernel := range kernels {
+
+					var sumR, sumG, sumB float64
+
+					for ky := -1; ky <= 1; ky++ {
+						for kx := -1; kx <= 1; kx++ {
+
+							px := x + kx
+							py := y + ky
+
+							r, g, b, _ := img.Image.At(px, py).RGBA()
+							factor := kernel[ky+1][kx+1]
+
+							grayScale := (0.3*float64(r>>8) + 0.59*float64(g>>8) + 0.11*float64(b>>8))
+
+							sumR += grayScale * factor
+							sumG += grayScale * factor
+							sumB += grayScale * factor
+						}
+					}
+
+					gradient += math.Pow(sumR, 2)
+
+				}
+
+				value := checkForLimit(math.Sqrt(gradient))
+
+				highFreqImg.Set(x, y, color.RGBA{
+					R: uint8(value),
+					G: uint8(value),
+					B: uint8(value),
+					A: 255,
+				})
+			}
+		}
+
+		img.Image = highFreqImg
+		img.Refresh()
+	})
+
+	return button
+}
+
+func NewRobertsButton(img *canvas.Image, window fyne.Window) fyne.CanvasObject {
+
+	button := widget.NewButton("Roberts", func() {
+
+		if img.Image == nil {
+			return
+		}
+
+		bounds := img.Image.Bounds()
+		changedImg := image.NewRGBA(bounds)
+
+		for y := 0; y < bounds.Max.Y-1; y++ {
+			for x := 0; x < bounds.Max.X-1; x++ {
+
+				firstPixelR, firstPixelG, firstPixelB, _ := img.Image.At(x, y).RGBA()
+				secondPixelR, secondPixelG, secondPixelB, _ := img.Image.At(x+1, y+1).RGBA()
+
+				thirdPixelR, thirdPixelG, thirdPixelB, _ := img.Image.At(x+1, y).RGBA()
+				fourthPixelR, fourthPixelG, fourthPixelB, _ := img.Image.At(x, y+1).RGBA()
+
+				firstPixel := (0.3*float64(firstPixelR>>8) + 0.59*float64(firstPixelG>>8) + 0.11*float64(firstPixelB>>8))
+				secondPixel := (0.3*float64(secondPixelR>>8) + 0.59*float64(secondPixelG>>8) + 0.11*float64(secondPixelB>>8))
+				thirdPixel := (0.3*float64(thirdPixelR>>8) + 0.59*float64(thirdPixelG>>8) + 0.11*float64(thirdPixelB>>8))
+				fourthPixel := (0.3*float64(fourthPixelR>>8) + 0.59*float64(fourthPixelG>>8) + 0.11*float64(fourthPixelB>>8))
+
+				R_x_y := math.Sqrt(math.Pow(firstPixel-secondPixel, 2) + math.Pow(thirdPixel-fourthPixel, 2))
+
+				value := checkForLimit(R_x_y)
+
+				changedImg.Set(x, y, color.RGBA{
+					R: uint8(value),
+					G: uint8(value),
+					B: uint8(value),
+					A: 255,
+				})
+			}
+		}
+
+		img.Image = changedImg
+		img.Refresh()
 	})
 
 	return button
